@@ -44,19 +44,38 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
-          SITE_ID=$(npx netlify-cli api listSites 2>/dev/null \
-            | jq -r '.[] | select(.name == "agent-match") | .id' 2>/dev/null \
-            | head -1 || true)
+          echo "=== Checking NETLIFY_AUTH_TOKEN ==="
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "ERROR: NETLIFY_AUTH_TOKEN secret is not set"
+            exit 1
+          fi
+          echo "Token is set (length: ${#NETLIFY_AUTH_TOKEN})"
+
+          echo "=== Fetching Netlify sites ==="
+          SITES=$(curl -sf \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            "https://api.netlify.com/api/v1/sites?filter=all&per_page=100")
+          echo "Found $(echo "$SITES" | jq 'length') sites"
+
+          SITE_ID=$(echo "$SITES" | jq -r '.[] | select(.name == "agent-match") | .id' | head -1)
+          SITE_URL=$(echo "$SITES" | jq -r '.[] | select(.name == "agent-match") | .ssl_url' | head -1)
 
           if [ -z "$SITE_ID" ]; then
-            echo "Site not found, creating agent-match..."
-            SITE_ID=$(npx netlify-cli api createSite \
-              --data '{"name":"agent-match"}' 2>/dev/null \
-              | jq -r '.id' 2>/dev/null || true)
+            echo "=== Creating new site 'agent-match' ==="
+            RESPONSE=$(curl -sf -X POST \
+              -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"agent-match"}' \
+              "https://api.netlify.com/api/v1/sites")
+            SITE_ID=$(echo "$RESPONSE" | jq -r '.id')
+            SITE_URL=$(echo "$RESPONSE" | jq -r '.ssl_url')
+            echo "Created site: $SITE_URL (ID: $SITE_ID)"
+          else
+            echo "Found existing site: $SITE_URL (ID: $SITE_ID)"
           fi
 
           echo "site_id=$SITE_ID" >> "$GITHUB_OUTPUT"
-          echo "Using Netlify site: $SITE_ID"
+          echo "site_url=$SITE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Deploy Preview to Netlify
         uses: netlify/actions/cli@master
@@ -91,19 +110,38 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
-          SITE_ID=$(npx netlify-cli api listSites 2>/dev/null \
-            | jq -r '.[] | select(.name == "agent-match") | .id' 2>/dev/null \
-            | head -1 || true)
+          echo "=== Checking NETLIFY_AUTH_TOKEN ==="
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "ERROR: NETLIFY_AUTH_TOKEN secret is not set"
+            exit 1
+          fi
+          echo "Token is set (length: ${#NETLIFY_AUTH_TOKEN})"
+
+          echo "=== Fetching Netlify sites ==="
+          SITES=$(curl -sf \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            "https://api.netlify.com/api/v1/sites?filter=all&per_page=100")
+          echo "Found $(echo "$SITES" | jq 'length') sites"
+
+          SITE_ID=$(echo "$SITES" | jq -r '.[] | select(.name == "agent-match") | .id' | head -1)
+          SITE_URL=$(echo "$SITES" | jq -r '.[] | select(.name == "agent-match") | .ssl_url' | head -1)
 
           if [ -z "$SITE_ID" ]; then
-            echo "Site not found, creating agent-match..."
-            SITE_ID=$(npx netlify-cli api createSite \
-              --data '{"name":"agent-match"}' 2>/dev/null \
-              | jq -r '.id' 2>/dev/null || true)
+            echo "=== Creating new site 'agent-match' ==="
+            RESPONSE=$(curl -sf -X POST \
+              -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"agent-match"}' \
+              "https://api.netlify.com/api/v1/sites")
+            SITE_ID=$(echo "$RESPONSE" | jq -r '.id')
+            SITE_URL=$(echo "$RESPONSE" | jq -r '.ssl_url')
+            echo "Created site: $SITE_URL (ID: $SITE_ID)"
+          else
+            echo "Found existing site: $SITE_URL (ID: $SITE_ID)"
           fi
 
           echo "site_id=$SITE_ID" >> "$GITHUB_OUTPUT"
-          echo "Using Netlify site: $SITE_ID"
+          echo "site_url=$SITE_URL" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Netlify (Production)
         uses: netlify/actions/cli@master
@@ -112,7 +150,7 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ steps.site.outputs.site_id }}
-          NEXTAUTH_URL: https://agent-match.netlify.app
+          NEXTAUTH_URL: ${{ steps.site.outputs.site_url }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
