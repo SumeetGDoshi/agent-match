@@ -44,33 +44,19 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
-          npx netlify-cli --version
-          # Look for an existing 'agent-match' site
-          SITE_ID=$(npx netlify-cli api listSites 2>/dev/null | python3 -c "
-import json, sys
-try:
-    sites = json.load(sys.stdin)
-    m = [s for s in sites if s.get('name') == 'agent-match']
-    print(m[0]['id'] if m else '')
-except Exception as e:
-    print('')
-" 2>/dev/null || echo "")
+          SITE_ID=$(npx netlify-cli api listSites 2>/dev/null \
+            | jq -r '.[] | select(.name == "agent-match") | .id' 2>/dev/null \
+            | head -1 || true)
 
-          # Create the site if it doesn't exist
           if [ -z "$SITE_ID" ]; then
-            echo "Site not found — creating 'agent-match'..."
+            echo "Site not found, creating agent-match..."
             SITE_ID=$(npx netlify-cli api createSite \
-              --data '{"name":"agent-match"}' 2>/dev/null | python3 -c "
-import json, sys
-try:
-    print(json.load(sys.stdin).get('id', ''))
-except Exception:
-    print('')
-" 2>/dev/null || echo "")
+              --data '{"name":"agent-match"}' 2>/dev/null \
+              | jq -r '.id' 2>/dev/null || true)
           fi
 
           echo "site_id=$SITE_ID" >> "$GITHUB_OUTPUT"
-          echo "Found/created site: $SITE_ID"
+          echo "Using Netlify site: $SITE_ID"
 
       - name: Deploy Preview to Netlify
         uses: netlify/actions/cli@master
@@ -105,33 +91,19 @@ except Exception:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
-          npx netlify-cli --version
-          # Look for an existing 'agent-match' site
-          SITE_ID=$(npx netlify-cli api listSites 2>/dev/null | python3 -c "
-import json, sys
-try:
-    sites = json.load(sys.stdin)
-    m = [s for s in sites if s.get('name') == 'agent-match']
-    print(m[0]['id'] if m else '')
-except Exception as e:
-    print('')
-" 2>/dev/null || echo "")
+          SITE_ID=$(npx netlify-cli api listSites 2>/dev/null \
+            | jq -r '.[] | select(.name == "agent-match") | .id' 2>/dev/null \
+            | head -1 || true)
 
-          # Create the site if it doesn't exist
           if [ -z "$SITE_ID" ]; then
-            echo "Site not found — creating 'agent-match'..."
+            echo "Site not found, creating agent-match..."
             SITE_ID=$(npx netlify-cli api createSite \
-              --data '{"name":"agent-match"}' 2>/dev/null | python3 -c "
-import json, sys
-try:
-    print(json.load(sys.stdin).get('id', ''))
-except Exception:
-    print('')
-" 2>/dev/null || echo "")
+              --data '{"name":"agent-match"}' 2>/dev/null \
+              | jq -r '.id' 2>/dev/null || true)
           fi
 
           echo "site_id=$SITE_ID" >> "$GITHUB_OUTPUT"
-          echo "Found/created site: $SITE_ID"
+          echo "Using Netlify site: $SITE_ID"
 
       - name: Deploy to Netlify (Production)
         uses: netlify/actions/cli@master
