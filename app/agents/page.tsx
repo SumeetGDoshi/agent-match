@@ -57,8 +57,8 @@ export default function AgentsBrowsePage() {
             AGENT<span style={{ color: 'var(--cyan)' }}>MATCH</span>
           </span>
         </Link>
-        <Link href="/auth/signin" className="btn-neon" style={{ padding: '8px 20px', fontSize: '11px' }}>
-          Connect
+        <Link href="/dashboard" className="btn-neon" style={{ padding: '8px 20px', fontSize: '11px' }}>
+          Dashboard
         </Link>
       </nav>
 
@@ -128,8 +128,6 @@ export default function AgentsBrowsePage() {
 }
 
 function AgentCard({ agent }: { agent: Agent }) {
-  const score = Math.floor(60 + Math.random() * 40) // placeholder until real match context
-
   return (
     <Link href={`/agents/${agent.id}`} style={{ textDecoration: 'none' }}>
       <div className="gradient-border scanlines" style={{
@@ -150,7 +148,7 @@ function AgentCard({ agent }: { agent: Agent }) {
       >
         {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div className="agent-id" style={{ marginBottom: '6px' }}>
               AGT_{agent.id.slice(0, 8).toUpperCase()}
             </div>
@@ -162,16 +160,16 @@ function AgentCard({ agent }: { agent: Agent }) {
             </p>
           </div>
 
-          {/* Score ring */}
+          {/* Capability count ring */}
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',
-            border: `2px solid var(--cyan)`,
+            border: `2px solid var(--rose)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 12px var(--cyan-glow)',
             flexShrink: 0,
           }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--cyan)', fontWeight: 500 }}>
-              {score}
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--rose)', fontWeight: 500, lineHeight: 1, textAlign: 'center' }}>
+              {agent.capabilities.length}<br />
+              <span style={{ fontSize: '8px', letterSpacing: '0.05em' }}>caps</span>
             </span>
           </div>
         </div>

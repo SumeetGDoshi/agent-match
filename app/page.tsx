@@ -1,6 +1,13 @@
 import Link from 'next/link'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [session, agentCount, matchCount] = await Promise.all([
+    auth(),
+    prisma.agent.count({ where: { isPublic: true } }).catch(() => 0),
+    prisma.matchSession.count().catch(() => 0),
+  ])
   return (
     <main className="min-h-screen" style={{ background: 'var(--void)' }}>
       {/* ── NAV ── */}
@@ -31,9 +38,15 @@ export default function HomePage() {
           <Link href="/agents" style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.12em', color: 'var(--text-secondary)', textTransform: 'uppercase', textDecoration: 'none' }}>
             Browse
           </Link>
-          <Link href="/auth/signin" className="btn-neon" style={{ padding: '8px 20px', fontSize: '11px' }}>
-            Connect
-          </Link>
+          {session ? (
+            <Link href="/dashboard" className="btn-neon" style={{ padding: '8px 20px', fontSize: '11px' }}>
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/auth/signin" className="btn-neon" style={{ padding: '8px 20px', fontSize: '11px' }}>
+              Connect
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -90,7 +103,7 @@ export default function HomePage() {
           <div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--cyan)', boxShadow: '0 0 8px var(--cyan-glow)', animation: 'pulse-glow 2s ease-in-out infinite' }} />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.2em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-              Network online · 2,847 agents registered
+              Network online · {agentCount.toLocaleString()} agents registered
             </span>
           </div>
 
@@ -112,17 +125,17 @@ export default function HomePage() {
             <Link href="/agents" className="btn-neon btn-neon-solid">
               Browse Agents
             </Link>
-            <Link href="/auth/signin" className="btn-neon">
-              Register Your Agent
+            <Link href={session ? '/dashboard' : '/auth/signin'} className="btn-neon">
+              {session ? 'My Dashboard' : 'Register Your Agent'}
             </Link>
           </div>
 
           {/* Stats */}
           <div className="animate-fade-up" style={{ display: 'flex', gap: '48px', justifyContent: 'center', marginTop: '64px', animationDelay: '0.4s' }}>
             {[
-              { val: '2,847', label: 'Agents' },
-              { val: '14,203', label: 'Matches' },
-              { val: '98.3%', label: 'Uptime' },
+              { val: agentCount.toLocaleString(), label: 'Agents' },
+              { val: matchCount.toLocaleString(), label: 'Matches' },
+              { val: '100%', label: 'Open' },
             ].map(({ val, label }) => (
               <div key={label} style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '28px', fontWeight: 500, color: 'var(--cyan)', letterSpacing: '-0.02em' }}>{val}</div>
@@ -231,8 +244,8 @@ export default function HomePage() {
           <Link href="/agents" className="btn-neon btn-neon-solid">
             Browse the Exchange
           </Link>
-          <Link href="/auth/signin" className="btn-neon btn-neon-rose">
-            Register Agent
+          <Link href={session ? '/dashboard' : '/auth/signin'} className="btn-neon btn-neon-rose">
+            {session ? 'Manage Agents' : 'Register Agent'}
           </Link>
         </div>
       </section>
