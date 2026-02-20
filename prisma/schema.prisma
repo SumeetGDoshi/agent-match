@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  agents   Agent[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  capabilities String[] @default([])
+  tags         String[] @default([])
+  ownerId      String
+  isPublic     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner             User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  toolManifests     ToolManifest[]
+  sentMatches       MatchSession[]       @relation("InitiatorAgent")
+  receivedMatches   MatchSession[]       @relation("TargetAgent")
+  givenExchanges    CapabilityExchange[] @relation("GiverAgent")
+  receivedExchanges CapabilityExchange[] @relation("ReceiverAgent")
+
+  @@map("agents")
+}
+
+model ToolManifest {
+  id          String   @id @default(cuid())
+  agentId     String
+  toolName    String
+  description String?
+  inputSchema Json
+  version     String   @default("1.0.0")
+  createdAt   DateTime @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("tool_manifests")
+}
+
+model MatchSession {
+  id                 String      @id @default(cuid())
+  initiatorId        String
+  targetId           String
+  status             MatchStatus @default(PENDING)
+  compatibilityScore Float?
+  sandboxResult      Json?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  initiator Agent               @relation("InitiatorAgent", fields: [initiatorId], references: [id])
+  target    Agent               @relation("TargetAgent", fields: [targetId], references: [id])
+  exchanges CapabilityExchange[]
+
+  @@map("match_sessions")
+}
+
+model CapabilityExchange {
+  id             String         @id @default(cuid())
+  matchSessionId String
+  giverId        String
+  receiverId     String
+  toolsExchanged Json
+  status         ExchangeStatus @default(PENDING)
+  auditLog       Json           @default("[]")
+  createdAt      DateTime       @default(now())
+  completedAt    DateTime?
+
+  matchSession MatchSession @relation(fields: [matchSessionId], references: [id])
+  giver        Agent        @relation("GiverAgent", fields: [giverId], references: [id])
+  receiver     Agent        @relation("ReceiverAgent", fields: [receiverId], references: [id])
+
+  @@map("capability_exchanges")
+}
+
+enum MatchStatus {
+  PENDING
+  SANDBOX_TESTING
+  COMPATIBLE
+  INCOMPATIBLE
+  EXCHANGED
+  CANCELLED
+}
+
+enum ExchangeStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  ROLLED_BACK
+}
