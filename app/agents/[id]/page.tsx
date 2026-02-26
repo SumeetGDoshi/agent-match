@@ -194,11 +194,7 @@ export default async function AgentDetailPage({ params }: Props) {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     background: 'var(--surface-2)', border: '1px solid var(--border)',
                     borderRadius: '2px', padding: '12px 16px',
-                    transition: 'border-color 0.15s ease',
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--cyan)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                  >
+                  }}>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-primary)' }}>
                       {p.name}
                     </div>
