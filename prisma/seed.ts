@@ -3,7 +3,9 @@ import { PrismaClient } from '@/app/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL! })
+const connectionString = process.env.DATABASE_URL!
+const ssl = connectionString.includes('localhost') ? false : { rejectUnauthorized: false }
+const pool = new Pool({ connectionString, ssl })
 const adapter = new PrismaPg(pool)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const prisma = new (PrismaClient as any)({ adapter })
@@ -11,21 +13,34 @@ const prisma = new (PrismaClient as any)({ adapter })
 async function main() {
   console.log('🌱 Seeding agent network...')
 
-  // System user for seeded agents
-  const systemUser = await prisma.user.upsert({
-    where: { email: 'system@agentmatch.ai' },
-    update: {},
-    create: {
-      email: 'system@agentmatch.ai',
-      name: 'AgentMatch Network',
-      emailVerified: new Date(),
-    },
-  })
+  // Each seed agent gets its own user so the cron heartbeat can match them
+  const [user1, user2, user3, user4] = await Promise.all([
+    prisma.user.upsert({
+      where: { email: 'techscribe@agentmatch.ai' },
+      update: {},
+      create: { email: 'techscribe@agentmatch.ai', name: 'TechScribe Owner', emailVerified: new Date() },
+    }),
+    prisma.user.upsert({
+      where: { email: 'devrel@agentmatch.ai' },
+      update: {},
+      create: { email: 'devrel@agentmatch.ai', name: 'DevRelPro Owner', emailVerified: new Date() },
+    }),
+    prisma.user.upsert({
+      where: { email: 'workshop@agentmatch.ai' },
+      update: {},
+      create: { email: 'workshop@agentmatch.ai', name: 'WorkshopGuide Owner', emailVerified: new Date() },
+    }),
+    prisma.user.upsert({
+      where: { email: 'research@agentmatch.ai' },
+      update: {},
+      create: { email: 'research@agentmatch.ai', name: 'ResearchScout Owner', emailVerified: new Date() },
+    }),
+  ])
 
   // ─── Agent 1: Technical Content Creator ───────────────────────────────────
   const contentCreator = await prisma.agent.upsert({
     where: { id: 'seed-content-creator' },
-    update: {},
+    update: { ownerId: user1.id },
     create: {
       id: 'seed-content-creator',
       name: 'TechScribe',
@@ -35,7 +50,7 @@ async function main() {
       tags: ['writing', 'developer-relations', 'documentation'],
       isPublic: true,
       verified: true,
-      ownerId: systemUser.id,
+      ownerId: user1.id,
       toolManifests: {
         create: [
           {
@@ -83,7 +98,7 @@ async function main() {
   // ─── Agent 2: DevRel Automation Bot ───────────────────────────────────────
   const devRelBot = await prisma.agent.upsert({
     where: { id: 'seed-devrel-bot' },
-    update: {},
+    update: { ownerId: user2.id },
     create: {
       id: 'seed-devrel-bot',
       name: 'DevRelPro',
@@ -93,7 +108,7 @@ async function main() {
       tags: ['developer-relations', 'community', 'analytics'],
       isPublic: true,
       verified: true,
-      ownerId: systemUser.id,
+      ownerId: user2.id,
       toolManifests: {
         create: [
           {
@@ -150,7 +165,7 @@ async function main() {
   // ─── Agent 3: Workshop Assistant ──────────────────────────────────────────
   const workshopAssistant = await prisma.agent.upsert({
     where: { id: 'seed-workshop-assistant' },
-    update: {},
+    update: { ownerId: user3.id },
     create: {
       id: 'seed-workshop-assistant',
       name: 'WorkshopGuide',
@@ -160,7 +175,7 @@ async function main() {
       tags: ['education', 'developer-relations', 'training'],
       isPublic: true,
       verified: false,
-      ownerId: systemUser.id,
+      ownerId: user3.id,
       toolManifests: {
         create: [
           {
@@ -210,7 +225,7 @@ async function main() {
   // ─── Agent 4: Research Scout ───────────────────────────────────────────────
   const researchScout = await prisma.agent.upsert({
     where: { id: 'seed-research-scout' },
-    update: {},
+    update: { ownerId: user4.id },
     create: {
       id: 'seed-research-scout',
       name: 'ResearchScout',
@@ -220,7 +235,7 @@ async function main() {
       tags: ['research', 'analytics', 'developer-relations'],
       isPublic: true,
       verified: false,
-      ownerId: systemUser.id,
+      ownerId: user4.id,
       toolManifests: {
         create: [
           {
