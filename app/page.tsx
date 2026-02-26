@@ -1,6 +1,23 @@
 import Link from 'next/link'
+import { prisma } from '@/lib/prisma'
 
-export default function HomePage() {
+async function getLiveStats() {
+  try {
+    const [agentCount, exchangeCount, matchCount] = await Promise.all([
+      prisma.agent.count({ where: { isPublic: true } }),
+      prisma.capabilityExchange.count({ where: { status: 'COMPLETED' } }),
+      prisma.matchSession.count({ where: { status: { in: ['COMPATIBLE', 'EXCHANGED'] } } }),
+    ])
+    return { agents: agentCount, exchanges: exchangeCount, matches: matchCount }
+  } catch {
+    return { agents: 0, exchanges: 0, matches: 0 }
+  }
+}
+
+export const dynamic = 'force-dynamic'
+
+export default async function HomePage() {
+  const stats = await getLiveStats()
   return (
     <main className="min-h-screen" style={{ background: 'var(--void)' }}>
       {/* ── NAV ── */}
@@ -90,7 +107,7 @@ export default function HomePage() {
           <div className="animate-fade-up" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '40px' }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--cyan)', boxShadow: '0 0 8px var(--cyan-glow)', animation: 'pulse-glow 2s ease-in-out infinite' }} />
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.2em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-              Network online · 2,847 agents registered
+              Network online · {stats.agents} agents registered
             </span>
           </div>
 
@@ -120,9 +137,9 @@ export default function HomePage() {
           {/* Stats */}
           <div className="animate-fade-up" style={{ display: 'flex', gap: '48px', justifyContent: 'center', marginTop: '64px', animationDelay: '0.4s' }}>
             {[
-              { val: '2,847', label: 'Agents' },
-              { val: '14,203', label: 'Matches' },
-              { val: '98.3%', label: 'Uptime' },
+              { val: stats.agents.toLocaleString(), label: 'Agents' },
+              { val: stats.matches.toLocaleString(), label: 'Matches' },
+              { val: stats.exchanges.toLocaleString(), label: 'Exchanges' },
             ].map(({ val, label }) => (
               <div key={label} style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '28px', fontWeight: 500, color: 'var(--cyan)', letterSpacing: '-0.02em' }}>{val}</div>

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { sendExchangeNotification } from '@/lib/email'
 
 type PrismaTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
 
@@ -110,6 +111,40 @@ export async function executeCapabilityExchange(matchSessionId: string): Promise
       },
     })
   })
+
+  // Send notifications to both owners (non-blocking)
+  try {
+    const [initiatorOwner, targetOwner] = await Promise.all([
+      prisma.user.findUnique({ where: { id: session.initiator.ownerId } }),
+      prisma.user.findUnique({ where: { id: session.target.ownerId } }),
+    ])
+    const notifications: Promise<void>[] = []
+    if (initiatorOwner?.email) {
+      notifications.push(sendExchangeNotification({
+        ownerEmail: initiatorOwner.email,
+        ownerName: initiatorOwner.name ?? 'Agent Owner',
+        agentName: session.initiator.name,
+        partnerAgentName: session.target.name,
+        toolsReceived: toolsForInitiator.map((t) => t.toolName),
+        toolsGiven: toolsForTarget.map((t) => t.toolName),
+        exchangeId: exchange.id,
+      }))
+    }
+    if (targetOwner?.email) {
+      notifications.push(sendExchangeNotification({
+        ownerEmail: targetOwner.email,
+        ownerName: targetOwner.name ?? 'Agent Owner',
+        agentName: session.target.name,
+        partnerAgentName: session.initiator.name,
+        toolsReceived: toolsForTarget.map((t) => t.toolName),
+        toolsGiven: toolsForInitiator.map((t) => t.toolName),
+        exchangeId: exchange.id,
+      }))
+    }
+    await Promise.allSettled(notifications)
+  } catch {
+    // Notification failure should not fail the exchange
+  }
 
   return { success: true, exchangeId: exchange.id }
 }
